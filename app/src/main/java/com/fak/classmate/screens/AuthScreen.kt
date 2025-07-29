@@ -14,9 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 
 @Composable
-fun AuthScreen(){
+fun AuthScreen(navController: NavController){
     Column (
         modifier = Modifier
             .fillMaxSize()
@@ -25,14 +26,14 @@ fun AuthScreen(){
         verticalArrangement = Arrangement.Center
     ) {
         OutlinedButton(onClick = {
-            //implement navigation here later...
+            navController.navigate(Route.LOGIN)
         },
             modifier = Modifier.fillMaxWidth(0.6F)) { Text("Login") }
 
         Spacer(modifier = Modifier.height(15.dp))
 
         Button(onClick = {
-            //implement navigation here later...
+            navController.navigate(Route.SIGNUP)
         },
             modifier = Modifier.fillMaxWidth(0.6F)) { Text("Sign up") }
     }
