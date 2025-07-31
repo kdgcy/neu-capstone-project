@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "557633160309",
+    "project_id": "neu-capstone2",
+    "storage_bucket": "neu-capstone2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:557633160309:android:210d9437b0d94f238e643c",
+        "android_client_info": {
+          "package_name": "com.fak.classmate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAzlDk5SmewnXbYIx3zZFzAnw10IijJD7s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
