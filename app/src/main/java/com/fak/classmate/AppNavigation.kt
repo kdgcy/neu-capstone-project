@@ -9,12 +9,16 @@ import com.fak.classmate.screens.Auth
 import com.fak.classmate.screens.Home
 import com.fak.classmate.screens.Login
 import com.fak.classmate.screens.SignUp
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 
 @Composable
 fun AppNavigation(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
+    val isLoggedIn = Firebase.auth.currentUser!=null
+    val firstPage = if(isLoggedIn) "home" else "auth"
 
-    NavHost(navController = navController, startDestination = "auth") {
+    NavHost(navController = navController, startDestination = firstPage) {
         composable("auth"){ Auth(modifier,navController) }
         composable("home"){ Home(modifier,navController) }
         composable("login"){ Login(modifier,navController) }

@@ -17,14 +17,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.fak.classmate.AppUtil
+import com.fak.classmate.viewmodel.AuthViewModel
 
 @Composable
-fun Login(modifier: Modifier = Modifier,navController: NavController) {
+fun Login(modifier: Modifier = Modifier,navController: NavController,authViewModel: AuthViewModel = viewModel()) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -34,6 +38,8 @@ fun Login(modifier: Modifier = Modifier,navController: NavController) {
     ) {
         var email by remember{ mutableStateOf("") }
         var password by remember{ mutableStateOf("") }
+        var context = LocalContext.current
+        var isLoading by remember { mutableStateOf(false) }
 
         Text(
             text = "Sign in your account",
@@ -63,10 +69,22 @@ fun Login(modifier: Modifier = Modifier,navController: NavController) {
         Spacer(modifier = Modifier.height(25.dp))
 
         Button(onClick = {
-            //implement here....
+            isLoading = true
+            authViewModel.login(email,password){success,errorMessage->
+                if(success){
+                    isLoading = false
+                    navController.navigate("home"){
+                        popUpTo("auth"){inclusive=true}
+                    }
+                }else{
+                    isLoading = false
+                    AppUtil.showToast(context,errorMessage?:"Something went wrong")
+                }
+            }
         },
+            enabled = !isLoading,
             modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)){
-            Text("Login")
+            Text(if(isLoading)"Logging in" else "Login")
         }
     }
 }
