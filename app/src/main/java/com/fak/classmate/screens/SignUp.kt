@@ -13,7 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.fak.classmate.AppUtil
-
 import com.fak.classmate.viewmodel.AuthViewModel
 
 @Composable
@@ -41,7 +40,7 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
         var email by remember{ mutableStateOf("") }
         var name by remember{ mutableStateOf("") }
         var password by remember{ mutableStateOf("") }
-        var context = LocalContext.current
+        val context = LocalContext.current
         var isLoading by remember { mutableStateOf(false) }
 
         Text(
