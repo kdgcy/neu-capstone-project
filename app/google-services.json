@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "25203391624",
-    "project_id": "classmate-401a8",
-    "storage_bucket": "classmate-401a8.firebasestorage.app"
+    "project_number": "557633160309",
+    "project_id": "neu-capstone2",
+    "storage_bucket": "neu-capstone2.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:25203391624:android:0e35cabe42a5cafc75733d",
+        "mobilesdk_app_id": "1:557633160309:android:210d9437b0d94f238e643c",
         "android_client_info": {
           "package_name": "com.fak.classmate"
         }
@@ -15,7 +15,8 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAd81aJFJ4D-L5GYlkRFeCX-jJwopHsQeo"
+          "current_key": "AIzaSyAzlDk5SmewnXbYIx3zZFzAnw10IijJD7s"
+
         }
       ],
       "services": {

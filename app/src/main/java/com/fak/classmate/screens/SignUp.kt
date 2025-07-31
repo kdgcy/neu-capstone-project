@@ -22,38 +22,37 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.fak.classmate.AppUtil
-import com.fak.classmate.model.AuthViewModel
+
+import com.fak.classmate.viewmodel.AuthViewModel
 
 @Composable
-fun SignUp(
-    navController: NavController,
-    authViewModel: AuthViewModel = viewModel()
-){
+fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewModel: AuthViewModel = viewModel()) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        var name by rememberSaveable { mutableStateOf("") }
-        var email by rememberSaveable { mutableStateOf("") }
-        var password by rememberSaveable { mutableStateOf("") }
+
+        var email by remember{ mutableStateOf("") }
+        var name by remember{ mutableStateOf("") }
+        var password by remember{ mutableStateOf("") }
         var context = LocalContext.current
 
         OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Username") },
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
             singleLine = true
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it},
-            label = { Text("email") },
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Full name") },
             singleLine = true
         )
 
@@ -70,7 +69,7 @@ fun SignUp(
         Spacer(modifier = Modifier.height(25.dp))
 
         Button(onClick = {
-            authViewModel.signup(name, email, password){success, errorMessage->
+            authViewModel.signup(email,name,password){success,errorMessage->
                 if(success){
 
                 }else{
