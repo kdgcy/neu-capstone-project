@@ -42,6 +42,7 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
         var name by remember{ mutableStateOf("") }
         var password by remember{ mutableStateOf("") }
         var context = LocalContext.current
+        var isLoading by remember { mutableStateOf(false) }
 
         Text(
             text = "Register your account",
@@ -80,16 +81,22 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
         Spacer(modifier = Modifier.height(25.dp))
 
         Button(onClick = {
+            isLoading = true
             authViewModel.signup(email,name,password){success,errorMessage->
                 if(success){
-
+                    isLoading = false
+                    navController.navigate("home"){
+                        popUpTo("auth"){inclusive=true}
+                    }
                 }else{
+                    isLoading = false
                     AppUtil.showToast(context,errorMessage?:"Something went wrong")
                 }
             }
         },
+            enabled = !isLoading,
             modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)) {
-            Text("Sign up")
+            Text(if(isLoading) "Creating account" else "Sign up")
         }
 
     }
