@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,8 +28,13 @@ import androidx.navigation.NavController
 import com.fak.classmate.AppUtil
 import com.fak.classmate.viewmodel.AuthViewModel
 
+data class ValidationState(
+    val isValid: Boolean = false,
+    val errorMessage: String = ""
+)
+
 @Composable
-fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewModel: AuthViewModel = viewModel()) {
+fun SignUp(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel = viewModel()) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -37,12 +43,75 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
         verticalArrangement = Arrangement.Center
     ) {
 
-        var firstname by remember{ mutableStateOf("") }
-        var lastname by remember{ mutableStateOf("") }
-        var email by remember{ mutableStateOf("") }
-        var password by remember{ mutableStateOf("") }
+        var firstname by remember { mutableStateOf("") }
+        var lastname by remember { mutableStateOf("") }
+        var email by remember { mutableStateOf("") }
+        var password by remember { mutableStateOf("") }
+        var confirmPassword by remember { mutableStateOf("") }
         val context = LocalContext.current
         var isLoading by remember { mutableStateOf(false) }
+
+        // Validation states
+        var firstnameValidation by remember { mutableStateOf(ValidationState()) }
+        var lastnameValidation by remember { mutableStateOf(ValidationState()) }
+        var emailValidation by remember { mutableStateOf(ValidationState()) }
+        var passwordValidation by remember { mutableStateOf(ValidationState()) }
+        var confirmPasswordValidation by remember { mutableStateOf(ValidationState()) }
+
+        // Validation functions
+        fun validateFirstname(name: String): ValidationState {
+            return when {
+                name.isBlank() -> ValidationState(false, "First name is required")
+                name.length < 3 -> ValidationState(false, "First name must be at least 3 characters")
+                !name.matches(Regex("^[a-zA-Z\\s]+$")) -> ValidationState(false, "First name can only contain letters")
+                else -> ValidationState(true, "")
+            }
+        }
+
+        fun validateLastname(name: String): ValidationState {
+            return when {
+                name.isBlank() -> ValidationState(false, "Last name is required")
+                name.length < 3 -> ValidationState(false, "Last name must be at least 3 characters")
+                !name.matches(Regex("^[a-zA-Z\\s]+$")) -> ValidationState(false, "Last name can only contain letters")
+                else -> ValidationState(true, "")
+            }
+        }
+
+        fun validateEmail(email: String): ValidationState {
+            return when {
+                email.isBlank() -> ValidationState(false, "Email is required")
+                !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() ->
+                    ValidationState(false, "Please enter a valid email address")
+                else -> ValidationState(true, "")
+            }
+        }
+
+        fun validatePassword(password: String): ValidationState {
+            return when {
+                password.isBlank() -> ValidationState(false, "Password is required")
+                password.length < 6 -> ValidationState(false, "Password must be at least 6 characters")
+                !password.matches(Regex(".*[A-Z].*")) -> ValidationState(false, "Password must contain at least one uppercase letter")
+                !password.matches(Regex(".*[a-z].*")) -> ValidationState(false, "Password must contain at least one lowercase letter")
+                !password.matches(Regex(".*\\d.*")) -> ValidationState(false, "Password must contain at least one number")
+                else -> ValidationState(true, "")
+            }
+        }
+
+        fun validateConfirmPassword(password: String, confirmPassword: String): ValidationState {
+            return when {
+                confirmPassword.isBlank() -> ValidationState(false, "Please confirm your password")
+                password != confirmPassword -> ValidationState(false, "Passwords do not match")
+                else -> ValidationState(true, "")
+            }
+        }
+
+        fun isFormValid(): Boolean {
+            return firstnameValidation.isValid &&
+                    lastnameValidation.isValid &&
+                    emailValidation.isValid &&
+                    passwordValidation.isValid &&
+                    confirmPasswordValidation.isValid
+        }
 
         Text(
             text = "Register your account",
@@ -50,67 +119,156 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
             fontWeight = FontWeight.SemiBold
         )
 
-
-
         Spacer(modifier = Modifier.height(20.dp))
 
+        // First Name Field
         OutlinedTextField(
             value = firstname,
-            onValueChange = { firstname = it },
+            onValueChange = {
+                firstname = it
+                firstnameValidation = validateFirstname(it)
+            },
             label = { Text("First name") },
-            singleLine = true
+            singleLine = true,
+            isError = !firstnameValidation.isValid && firstname.isNotEmpty(),
+            supportingText = {
+                if (!firstnameValidation.isValid && firstname.isNotEmpty()) {
+                    Text(
+                        text = firstnameValidation.errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
+        Spacer(modifier = Modifier.height(16.dp))
 
-
-        Spacer(modifier = Modifier.height(20.dp))
-
+        // Last Name Field
         OutlinedTextField(
             value = lastname,
-            onValueChange = { lastname = it },
+            onValueChange = {
+                lastname = it
+                lastnameValidation = validateLastname(it)
+            },
             label = { Text("Last name") },
-            singleLine = true
+            singleLine = true,
+            isError = !lastnameValidation.isValid && lastname.isNotEmpty(),
+            supportingText = {
+                if (!lastnameValidation.isValid && lastname.isNotEmpty()) {
+                    Text(
+                        text = lastnameValidation.errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
+        // Email Field
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                emailValidation = validateEmail(it)
+            },
             label = { Text("Email") },
-            singleLine = true
+            singleLine = true,
+            isError = !emailValidation.isValid && email.isNotEmpty(),
+            supportingText = {
+                if (!emailValidation.isValid && email.isNotEmpty()) {
+                    Text(
+                        text = emailValidation.errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
+        // Password Field
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                passwordValidation = validatePassword(it)
+                // Re-validate confirm password when password changes
+                if (confirmPassword.isNotEmpty()) {
+                    confirmPasswordValidation = validateConfirmPassword(it, confirmPassword)
+                }
+            },
             label = { Text("Password") },
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation()
+            visualTransformation = PasswordVisualTransformation(),
+            isError = !passwordValidation.isValid && password.isNotEmpty(),
+            supportingText = {
+                if (!passwordValidation.isValid && password.isNotEmpty()) {
+                    Text(
+                        text = passwordValidation.errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Confirm Password Field
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = {
+                confirmPassword = it
+                confirmPasswordValidation = validateConfirmPassword(password, it)
+            },
+            label = { Text("Confirm Password") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            isError = !confirmPasswordValidation.isValid && confirmPassword.isNotEmpty(),
+            supportingText = {
+                if (!confirmPasswordValidation.isValid && confirmPassword.isNotEmpty()) {
+                    Text(
+                        text = confirmPasswordValidation.errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(25.dp))
 
-        Button(onClick = {
-            isLoading = true
-            authViewModel.signup(firstname, lastname, email, password){success,errorMessage->
-                if(success){
-                    isLoading = false
-                    navController.navigate("home"){
-                        popUpTo("auth"){inclusive=true}
-                    }
-                }else{
-                    isLoading = false
-                    AppUtil.showToast(context,errorMessage?:"Something went wrong")
-                }
-            }
-        },
-            enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth(0.6f).height(50.dp)) {
-            Text(if(isLoading) "Creating account" else "Sign up")
-        }
+        Button(
+            onClick = {
+                // Validate all fields before submission
+                firstnameValidation = validateFirstname(firstname)
+                lastnameValidation = validateLastname(lastname)
+                emailValidation = validateEmail(email)
+                passwordValidation = validatePassword(password)
+                confirmPasswordValidation = validateConfirmPassword(password, confirmPassword)
 
+                if (isFormValid()) {
+                    isLoading = true
+                    authViewModel.signup(firstname, lastname, email, password) { success, errorMessage ->
+                        if (success) {
+                            isLoading = false
+                            navController.navigate("home") {
+                                popUpTo("auth") { inclusive = true }
+                            }
+                        } else {
+                            isLoading = false
+                            AppUtil.showToast(context, errorMessage ?: "Something went wrong")
+                        }
+                    }
+                } else {
+                    AppUtil.showToast(context, "Please fix the errors above")
+                }
+            },
+            enabled = !isLoading && isFormValid(),
+            modifier = Modifier
+                .fillMaxWidth(0.8f)
+                .height(50.dp)
+        ) {
+            Text(if (isLoading) "Creating account..." else "Sign up")
+        }
     }
 }
