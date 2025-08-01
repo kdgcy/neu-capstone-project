@@ -26,12 +26,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.fak.classmate.AppUtil
+import com.fak.classmate.model.ValidationState
 import com.fak.classmate.viewmodel.AuthViewModel
-
-data class ValidationState(
-    val isValid: Boolean = false,
-    val errorMessage: String = ""
-)
 
 @Composable
 fun SignUp(modifier: Modifier = Modifier, navController: NavController, authViewModel: AuthViewModel = viewModel()) {
@@ -62,7 +58,7 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
         fun validateFirstname(name: String): ValidationState {
             return when {
                 name.isBlank() -> ValidationState(false, "First name is required")
-                name.length < 3 -> ValidationState(false, "First name must be at least 3 characters")
+                name.length < 2 -> ValidationState(false, "First name must be at least 2 characters")
                 !name.matches(Regex("^[a-zA-Z\\s]+$")) -> ValidationState(false, "First name can only contain letters")
                 else -> ValidationState(true, "")
             }
@@ -71,7 +67,7 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
         fun validateLastname(name: String): ValidationState {
             return when {
                 name.isBlank() -> ValidationState(false, "Last name is required")
-                name.length < 3 -> ValidationState(false, "Last name must be at least 3 characters")
+                name.length < 2 -> ValidationState(false, "Last name must be at least 2 characters")
                 !name.matches(Regex("^[a-zA-Z\\s]+$")) -> ValidationState(false, "Last name can only contain letters")
                 else -> ValidationState(true, "")
             }

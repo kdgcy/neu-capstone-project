@@ -6,3 +6,8 @@ data class UserModel(
     val email: String,
     val uid: String
 )
+
+data class ValidationState(
+    val isValid: Boolean = false,
+    val errorMessage: String = ""
+)
