@@ -1,7 +1,8 @@
 package com.fak.classmate.model
 
 data class UserModel(
-    val name: String,
+    val firstname: String,
+    val lastname: String,
     val email: String,
     val uid: String
 )
