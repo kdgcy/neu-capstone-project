@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -54,60 +55,7 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
         var passwordValidation by remember { mutableStateOf(ValidationState()) }
         var confirmPasswordValidation by remember { mutableStateOf(ValidationState()) }
 
-        // Validation functions
-        fun validateFirstname(name: String): ValidationState {
-            return when {
-                name.isBlank() -> ValidationState(false, "First name is required")
-                name.length < 2 -> ValidationState(false, "First name must be at least 2 characters")
-                !name.matches(Regex("^[a-zA-Z\\s]+$")) -> ValidationState(false, "First name can only contain letters")
-                else -> ValidationState(true, "")
-            }
-        }
 
-        fun validateLastname(name: String): ValidationState {
-            return when {
-                name.isBlank() -> ValidationState(false, "Last name is required")
-                name.length < 2 -> ValidationState(false, "Last name must be at least 2 characters")
-                !name.matches(Regex("^[a-zA-Z\\s]+$")) -> ValidationState(false, "Last name can only contain letters")
-                else -> ValidationState(true, "")
-            }
-        }
-
-        fun validateEmail(email: String): ValidationState {
-            return when {
-                email.isBlank() -> ValidationState(false, "Email is required")
-                !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() ->
-                    ValidationState(false, "Please enter a valid email address")
-                else -> ValidationState(true, "")
-            }
-        }
-
-        fun validatePassword(password: String): ValidationState {
-            return when {
-                password.isBlank() -> ValidationState(false, "Password is required")
-                password.length < 6 -> ValidationState(false, "Password must be at least 6 characters")
-                !password.matches(Regex(".*[A-Z].*")) -> ValidationState(false, "Password must contain at least one uppercase letter")
-                !password.matches(Regex(".*[a-z].*")) -> ValidationState(false, "Password must contain at least one lowercase letter")
-                !password.matches(Regex(".*\\d.*")) -> ValidationState(false, "Password must contain at least one number")
-                else -> ValidationState(true, "")
-            }
-        }
-
-        fun validateConfirmPassword(password: String, confirmPassword: String): ValidationState {
-            return when {
-                confirmPassword.isBlank() -> ValidationState(false, "Please confirm your password")
-                password != confirmPassword -> ValidationState(false, "Passwords do not match")
-                else -> ValidationState(true, "")
-            }
-        }
-
-        fun isFormValid(): Boolean {
-            return firstnameValidation.isValid &&
-                    lastnameValidation.isValid &&
-                    emailValidation.isValid &&
-                    passwordValidation.isValid &&
-                    confirmPasswordValidation.isValid
-        }
 
         Text(
             text = "Register your account",
@@ -122,7 +70,7 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
             value = firstname,
             onValueChange = {
                 firstname = it
-                firstnameValidation = validateFirstname(it)
+                firstnameValidation = authViewModel.validateFirstname(it)
             },
             label = { Text("First name") },
             singleLine = true,
@@ -144,7 +92,7 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
             value = lastname,
             onValueChange = {
                 lastname = it
-                lastnameValidation = validateLastname(it)
+                lastnameValidation = authViewModel.validateLastname(it)
             },
             label = { Text("Last name") },
             singleLine = true,
@@ -166,7 +114,7 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
             value = email,
             onValueChange = {
                 email = it
-                emailValidation = validateEmail(it)
+                emailValidation = authViewModel.validateEmail(it)
             },
             label = { Text("Email") },
             singleLine = true,
@@ -188,10 +136,10 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
             value = password,
             onValueChange = {
                 password = it
-                passwordValidation = validatePassword(it)
+                passwordValidation = authViewModel.validatePassword(it)
                 // Re-validate confirm password when password changes
                 if (confirmPassword.isNotEmpty()) {
-                    confirmPasswordValidation = validateConfirmPassword(it, confirmPassword)
+                    confirmPasswordValidation = authViewModel.validateConfirmPassword(it, confirmPassword)
                 }
             },
             label = { Text("Password") },
@@ -215,7 +163,7 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
             value = confirmPassword,
             onValueChange = {
                 confirmPassword = it
-                confirmPasswordValidation = validateConfirmPassword(password, it)
+                confirmPasswordValidation = authViewModel.validateConfirmPassword(password, it)
             },
             label = { Text("Confirm Password") },
             singleLine = true,
@@ -236,13 +184,19 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
         Button(
             onClick = {
                 // Validate all fields before submission
-                firstnameValidation = validateFirstname(firstname)
-                lastnameValidation = validateLastname(lastname)
-                emailValidation = validateEmail(email)
-                passwordValidation = validatePassword(password)
-                confirmPasswordValidation = validateConfirmPassword(password, confirmPassword)
+                firstnameValidation = authViewModel.validateFirstname(firstname)
+                lastnameValidation = authViewModel.validateLastname(lastname)
+                emailValidation = authViewModel.validateEmail(email)
+                passwordValidation = authViewModel.validatePassword(password)
+                confirmPasswordValidation = authViewModel.validateConfirmPassword(password, confirmPassword)
 
-                if (isFormValid()) {
+                if (authViewModel.isFormValid(
+                        firstnameValidation.isValid,
+                        lastnameValidation.isValid,
+                        emailValidation.isValid,
+                        passwordValidation.isValid,
+                        confirmPasswordValidation.isValid
+                    )) {
                     isLoading = true
                     authViewModel.signup(firstname, lastname, email, password) { success, errorMessage ->
                         if (success) {
@@ -259,7 +213,13 @@ fun SignUp(modifier: Modifier = Modifier, navController: NavController, authView
                     AppUtil.showToast(context, "Please fix the errors above")
                 }
             },
-            enabled = !isLoading && isFormValid(),
+            enabled = !isLoading && authViewModel.isFormValid(
+                firstnameValidation.isValid,
+                lastnameValidation.isValid,
+                emailValidation.isValid,
+                passwordValidation.isValid,
+                confirmPasswordValidation.isValid
+            ),
             modifier = Modifier
                 .fillMaxWidth(0.8f)
                 .height(50.dp)
