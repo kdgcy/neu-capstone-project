@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import com.fak.classmate.screens.Auth
 import com.fak.classmate.screens.Home
 import com.fak.classmate.screens.Login
+import com.fak.classmate.screens.Profile
 import com.fak.classmate.screens.SignUp
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -23,5 +24,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("home"){ Home(modifier,navController) }
         composable("login"){ Login(modifier,navController) }
         composable("signup"){ SignUp(modifier,navController) }
+        composable("profile"){ Profile(modifier,navController) }
     }
 }
