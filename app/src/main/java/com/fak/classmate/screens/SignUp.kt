@@ -37,8 +37,9 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
         verticalArrangement = Arrangement.Center
     ) {
 
+        var firstname by remember{ mutableStateOf("") }
+        var lastname by remember{ mutableStateOf("") }
         var email by remember{ mutableStateOf("") }
-        var name by remember{ mutableStateOf("") }
         var password by remember{ mutableStateOf("") }
         val context = LocalContext.current
         var isLoading by remember { mutableStateOf(false) }
@@ -49,21 +50,34 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
             fontWeight = FontWeight.SemiBold
         )
 
+
+
         Spacer(modifier = Modifier.height(20.dp))
 
         OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
+            value = firstname,
+            onValueChange = { firstname = it },
+            label = { Text("First name") },
+            singleLine = true
+        )
+
+
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        OutlinedTextField(
+            value = lastname,
+            onValueChange = { lastname = it },
+            label = { Text("Last name") },
             singleLine = true
         )
 
         Spacer(modifier = Modifier.height(20.dp))
 
         OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Full name") },
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
             singleLine = true
         )
 
@@ -81,7 +95,7 @@ fun SignUp(modifier: Modifier = Modifier,navController: NavController,authViewMo
 
         Button(onClick = {
             isLoading = true
-            authViewModel.signup(email,name,password){success,errorMessage->
+            authViewModel.signup(firstname, lastname, email, password){success,errorMessage->
                 if(success){
                     isLoading = false
                     navController.navigate("home"){
