@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.fak.classmate.screens.AddTask
 import com.fak.classmate.screens.Auth
 import com.fak.classmate.screens.Home
 import com.fak.classmate.screens.Login
@@ -27,5 +28,6 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("signup"){ SignUp(modifier,navController) }
         composable("profile"){ Profile(modifier,navController) }
         composable("splash"){ Splash(modifier,navController) }
+        composable("addTask"){ AddTask(modifier,navController) }
     }
 }

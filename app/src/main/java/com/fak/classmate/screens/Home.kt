@@ -114,7 +114,7 @@ fun Home(modifier: Modifier = Modifier, navController: NavController) {
                 // Add new task button
                 Button(
                     onClick = {
-                        // Handle add task click
+                        navController.navigate("addTask")
                     },
                     modifier = Modifier.padding(16.dp)
                 ) {
