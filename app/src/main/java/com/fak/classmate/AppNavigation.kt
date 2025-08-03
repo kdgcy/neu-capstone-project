@@ -2,6 +2,7 @@ package com.fak.classmate
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -12,6 +13,7 @@ import com.fak.classmate.screens.Login
 import com.fak.classmate.screens.Profile
 import com.fak.classmate.screens.SignUp
 import com.fak.classmate.screens.Splash
+import com.fak.classmate.viewmodel.TaskViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 
@@ -21,13 +23,15 @@ fun AppNavigation(modifier: Modifier = Modifier) {
     val isLoggedIn = Firebase.auth.currentUser!=null
     val firstPage = if(isLoggedIn) "home" else "auth"
 
+    val taskViewModel: TaskViewModel = viewModel()
+
     NavHost(navController = navController, startDestination = "splash") {
-        composable("auth"){ Auth(modifier,navController) }
-        composable("home"){ Home(modifier,navController) }
-        composable("login"){ Login(modifier,navController) }
-        composable("signup"){ SignUp(modifier,navController) }
-        composable("profile"){ Profile(modifier,navController) }
-        composable("splash"){ Splash(modifier,navController) }
-        composable("addTask"){ AddTask(modifier,navController) }
+        composable("auth"){ Auth(modifier, navController) }
+        composable("home"){ Home(modifier, navController, taskViewModel) }  // ✅ Pass taskViewModel
+        composable("login"){ Login(modifier, navController) }
+        composable("signup"){ SignUp(modifier, navController) }
+        composable("profile"){ Profile(modifier, navController) }
+        composable("splash"){ Splash(modifier, navController) }
+        composable("addTask"){ AddTask(modifier, navController, taskViewModel) }  // ✅ Pass taskViewModel
     }
 }

@@ -39,10 +39,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.fak.classmate.AppUtil
 import com.fak.classmate.model.TaskCategory
 import com.fak.classmate.model.TaskPriority
+import com.fak.classmate.viewmodel.TaskViewModel
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -50,7 +52,11 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddTask(modifier: Modifier = Modifier, navController: NavController) {
+fun AddTask(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    taskViewModel: TaskViewModel = viewModel()
+) {
     // Form state
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -282,30 +288,41 @@ fun AddTask(modifier: Modifier = Modifier, navController: NavController) {
                     onClick = {
                         if (validateForm()) {
                             isSaving = true
-                            //Save task using TaskViewModel
-                            AppUtil.showToast(context, "Task saved successfully!")
-                            navController.navigateUp()
+                            taskViewModel.createTask(
+                                title = title,
+                                description = description,
+                                dueDate = selectedDate,
+                                priority = selectedPriority,
+                                category = selectedCategory
+                            ) { success, errorMessage ->
+                                isSaving = false
+                                if (success) {
+                                    AppUtil.showToast(context, "Task created successfully!")
+                                    navController.navigateUp()
+                                } else {
+                                    AppUtil.showToast(context, errorMessage ?: "Failed to create task")
+                                }
+                            }
                         } else {
                             AppUtil.showToast(context, "Please fix the errors above")
                         }
                     },
-                    enabled = !isSaving,
+                    enabled = !isSaving && title.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(if (isSaving) "Saving..." else "Save Task")
+                    Text(if (isSaving) "Creating..." else "Create Task")
                 }
             }
         }
     }
 
-    //Add DatePickerDialog when isDatePickerVisible is true
-    //For now, we'll implement a simple date picker later
+    // Simple date picker implementation
     if (isDatePickerVisible) {
-        // Simple implementation - set date to tomorrow for demo
+        // For now, set date to tomorrow (we can enhance this later with a proper date picker)
         selectedDate = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_MONTH, 1)
         }.time
         isDatePickerVisible = false
-        AppUtil.showToast(context, "Date set to tomorrow (temporary)")
+        AppUtil.showToast(context, "Date set to tomorrow")
     }
 }
