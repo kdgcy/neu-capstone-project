@@ -13,6 +13,7 @@ import com.fak.classmate.screens.Login
 import com.fak.classmate.screens.Profile
 import com.fak.classmate.screens.SignUp
 import com.fak.classmate.screens.Splash
+import com.fak.classmate.screens.TaskDetail
 import com.fak.classmate.viewmodel.TaskViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -33,5 +34,9 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("profile"){ Profile(modifier, navController) }
         composable("splash"){ Splash(modifier, navController) }
         composable("addTask"){ AddTask(modifier, navController, taskViewModel) }  // ✅ Pass taskViewModel
+        composable("taskDetail/{taskId}") { backStackEntry ->
+            val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
+            TaskDetail(modifier, navController, taskId, taskViewModel)
+        }
     }
 }

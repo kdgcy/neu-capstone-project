@@ -3,6 +3,7 @@ package com.fak.classmate.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fak.classmate.model.SubTaskModel
 import com.fak.classmate.model.TaskCategory
 import com.fak.classmate.model.TaskModel
 import com.fak.classmate.model.TaskPriority
@@ -27,6 +28,9 @@ class TaskViewModel : ViewModel() {
     private val _tasks = MutableStateFlow<List<TaskModel>>(emptyList())
     val tasks: StateFlow<List<TaskModel>> = _tasks.asStateFlow()
 
+    private val _subtasks = MutableStateFlow<Map<String, List<SubTaskModel>>>(emptyMap())
+    val subtasks: StateFlow<Map<String, List<SubTaskModel>>> = _subtasks.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -34,7 +38,7 @@ class TaskViewModel : ViewModel() {
     val error: StateFlow<String?> = _error.asStateFlow()
 
     init {
-        Log.d("TaskViewModel", "TaskViewModel initialized with subcollection approach")
+        Log.d("TaskViewModel", "TaskViewModel initialized with subtask support")
         loadTasks()
     }
 
@@ -135,12 +139,10 @@ class TaskViewModel : ViewModel() {
                     }
 
                     Log.d("TaskViewModel", "Successfully parsed ${taskList.size} tasks")
-                    taskList.forEach { task ->
-                        Log.d("TaskViewModel", "Task - Title: ${task.title}, ID: ${task.id}")
-                    }
-
                     _tasks.value = taskList
-                    Log.d("TaskViewModel", "Tasks state updated. Current count: ${_tasks.value.size}")
+
+                    // Load subtasks for all tasks
+                    loadAllSubtasks(user.uid, taskList.map { it.id })
 
                 } catch (e: Exception) {
                     Log.e("TaskViewModel", "Error loading tasks: ${e.message}", e)
@@ -154,7 +156,185 @@ class TaskViewModel : ViewModel() {
         }
     }
 
-    // Update task completion status in subcollection
+    // Load subtasks for all tasks
+    private suspend fun loadAllSubtasks(userId: String, taskIds: List<String>) {
+        try {
+            val subtaskMap = mutableMapOf<String, List<SubTaskModel>>()
+
+            for (taskId in taskIds) {
+                val subtaskSnapshot = firestore.collection("users")
+                    .document(userId)
+                    .collection("tasks")
+                    .document(taskId)
+                    .collection("subtasks")
+                    .orderBy("order", Query.Direction.ASCENDING)
+                    .get()
+                    .await()
+
+                val subtaskList = subtaskSnapshot.documents.mapNotNull { document ->
+                    try {
+                        document.toObject(SubTaskModel::class.java)
+                    } catch (e: Exception) {
+                        Log.e("TaskViewModel", "Error parsing subtask ${document.id}: ${e.message}")
+                        null
+                    }
+                }
+
+                subtaskMap[taskId] = subtaskList
+                Log.d("TaskViewModel", "Loaded ${subtaskList.size} subtasks for task $taskId")
+            }
+
+            _subtasks.value = subtaskMap
+        } catch (e: Exception) {
+            Log.e("TaskViewModel", "Error loading subtasks: ${e.message}", e)
+        }
+    }
+
+    // Get subtasks for a specific task
+    fun getSubtasksForTask(taskId: String): List<SubTaskModel> {
+        return _subtasks.value[taskId] ?: emptyList()
+    }
+
+    // Create a new subtask
+    fun createSubtask(
+        taskId: String,
+        title: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        val currentUser = auth.currentUser
+        currentUser?.let { user ->
+            viewModelScope.launch {
+                try {
+                    val subtaskId = UUID.randomUUID().toString()
+                    val currentSubtasks = getSubtasksForTask(taskId)
+                    val nextOrder = currentSubtasks.size
+
+                    val subtask = SubTaskModel(
+                        id = subtaskId,
+                        title = title.trim(),
+                        isCompleted = false,
+                        taskId = taskId,
+                        userId = user.uid,
+                        createdAt = Timestamp.now(),
+                        updatedAt = Timestamp.now(),
+                        order = nextOrder
+                    )
+
+                    // Save to nested subcollection: users/{userId}/tasks/{taskId}/subtasks/{subtaskId}
+                    firestore.collection("users")
+                        .document(user.uid)
+                        .collection("tasks")
+                        .document(taskId)
+                        .collection("subtasks")
+                        .document(subtaskId)
+                        .set(subtask)
+                        .await()
+
+                    // Update local state
+                    val updatedSubtasks = currentSubtasks + subtask
+                    val newSubtaskMap = _subtasks.value.toMutableMap()
+                    newSubtaskMap[taskId] = updatedSubtasks
+                    _subtasks.value = newSubtaskMap
+
+                    Log.d("TaskViewModel", "Subtask created successfully: $title")
+                    onResult(true, null)
+
+                } catch (e: Exception) {
+                    Log.e("TaskViewModel", "Error creating subtask: ${e.message}", e)
+                    onResult(false, e.localizedMessage ?: "Failed to create subtask")
+                }
+            }
+        } ?: run {
+            onResult(false, "User not authenticated")
+        }
+    }
+
+    // Toggle subtask completion
+    fun toggleSubtaskCompletion(
+        taskId: String,
+        subtaskId: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        val currentUser = auth.currentUser
+        currentUser?.let { user ->
+            viewModelScope.launch {
+                try {
+                    val subtaskList = getSubtasksForTask(taskId)
+                    val subtask = subtaskList.find { it.id == subtaskId }
+
+                    subtask?.let {
+                        val updatedSubtask = it.copy(
+                            isCompleted = !it.isCompleted,
+                            updatedAt = Timestamp.now()
+                        )
+
+                        // Update in Firebase
+                        firestore.collection("users")
+                            .document(user.uid)
+                            .collection("tasks")
+                            .document(taskId)
+                            .collection("subtasks")
+                            .document(subtaskId)
+                            .set(updatedSubtask)
+                            .await()
+
+                        // Update local state
+                        val updatedSubtasks = subtaskList.map { currentSubtask ->
+                            if (currentSubtask.id == subtaskId) updatedSubtask else currentSubtask
+                        }
+                        val newSubtaskMap = _subtasks.value.toMutableMap()
+                        newSubtaskMap[taskId] = updatedSubtasks
+                        _subtasks.value = newSubtaskMap
+
+                        onResult(true, null)
+                    } ?: run {
+                        onResult(false, "Subtask not found")
+                    }
+                } catch (e: Exception) {
+                    Log.e("TaskViewModel", "Error toggling subtask: ${e.message}", e)
+                    onResult(false, e.localizedMessage ?: "Failed to update subtask")
+                }
+            }
+        }
+    }
+
+    // Delete a subtask
+    fun deleteSubtask(
+        taskId: String,
+        subtaskId: String,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        val currentUser = auth.currentUser
+        currentUser?.let { user ->
+            viewModelScope.launch {
+                try {
+                    // Delete from Firebase
+                    firestore.collection("users")
+                        .document(user.uid)
+                        .collection("tasks")
+                        .document(taskId)
+                        .collection("subtasks")
+                        .document(subtaskId)
+                        .delete()
+                        .await()
+
+                    // Update local state
+                    val currentSubtasks = getSubtasksForTask(taskId)
+                    val updatedSubtasks = currentSubtasks.filter { it.id != subtaskId }
+                    val newSubtaskMap = _subtasks.value.toMutableMap()
+                    newSubtaskMap[taskId] = updatedSubtasks
+                    _subtasks.value = newSubtaskMap
+
+                    onResult(true, null)
+                } catch (e: Exception) {
+                    Log.e("TaskViewModel", "Error deleting subtask: ${e.message}", e)
+                    onResult(false, e.localizedMessage ?: "Failed to delete subtask")
+                }
+            }
+        }
+    }
+
+    // Update task completion status
     fun toggleTaskCompletion(taskId: String, onResult: (Boolean, String?) -> Unit) {
         val currentUser = auth.currentUser
         currentUser?.let { user ->
@@ -198,7 +378,20 @@ class TaskViewModel : ViewModel() {
         currentUser?.let { user ->
             viewModelScope.launch {
                 try {
-                    // Delete from subcollection
+                    // Delete all subtasks first
+                    val subtasks = getSubtasksForTask(taskId)
+                    for (subtask in subtasks) {
+                        firestore.collection("users")
+                            .document(user.uid)
+                            .collection("tasks")
+                            .document(taskId)
+                            .collection("subtasks")
+                            .document(subtask.id)
+                            .delete()
+                            .await()
+                    }
+
+                    // Delete the task
                     firestore.collection("users")
                         .document(user.uid)
                         .collection("tasks")
@@ -208,6 +401,10 @@ class TaskViewModel : ViewModel() {
 
                     // Remove from local state
                     _tasks.value = _tasks.value.filter { it.id != taskId }
+                    val newSubtaskMap = _subtasks.value.toMutableMap()
+                    newSubtaskMap.remove(taskId)
+                    _subtasks.value = newSubtaskMap
+
                     onResult(true, null)
 
                 } catch (e: Exception) {
