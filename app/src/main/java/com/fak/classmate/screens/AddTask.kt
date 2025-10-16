@@ -18,6 +18,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -29,7 +32,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -62,7 +67,13 @@ fun AddTask(
     var description by remember { mutableStateOf("") }
     var selectedPriority by remember { mutableStateOf(TaskPriority.MEDIUM) }
     var selectedCategory by remember { mutableStateOf(TaskCategory.ASSIGNMENT) }
-    var selectedDate by remember { mutableStateOf(Date()) }
+    var selectedDate by remember {
+        mutableStateOf(Calendar.getInstance().apply {
+            add(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+        }.time)
+    }
     var isSaving by remember { mutableStateOf(false) }
 
     // Dropdown states
@@ -72,19 +83,42 @@ fun AddTask(
 
     // Validation
     var titleError by remember { mutableStateOf("") }
+    var descriptionError by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
 
     // Validation function
     fun validateForm(): Boolean {
+        var isValid = true
+
+        // Title validation
         titleError = when {
-            title.isBlank() -> "Task title is required"
-            title.length < 3 -> "Title must be at least 3 characters"
-            title.length > 100 -> "Title must be less than 100 characters"
+            title.isBlank() -> {
+                isValid = false
+                "Task title is required"
+            }
+            title.length < 3 -> {
+                isValid = false
+                "Title must be at least 3 characters"
+            }
+            title.length > 100 -> {
+                isValid = false
+                "Title must be less than 100 characters"
+            }
             else -> ""
         }
-        return titleError.isEmpty()
+
+        // Description validation (optional but with limit)
+        descriptionError = when {
+            description.length > 500 -> {
+                isValid = false
+                "Description must be less than 500 characters"
+            }
+            else -> ""
+        }
+
+        return isValid
     }
 
     Scaffold(
@@ -98,9 +132,10 @@ fun AddTask(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        navController.navigateUp()
-                    }) {
+                    IconButton(
+                        onClick = { navController.navigateUp() },
+                        enabled = !isSaving
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
@@ -128,7 +163,8 @@ fun AddTask(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -137,35 +173,57 @@ fun AddTask(
                     Text(
                         text = "Task Information",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     // Title Field
                     OutlinedTextField(
                         value = title,
                         onValueChange = {
-                            title = it
-                            if (titleError.isNotEmpty()) titleError = ""
+                            if (it.length <= 100) {
+                                title = it
+                                if (titleError.isNotEmpty()) titleError = ""
+                            }
                         },
-                        label = { Text("Task Title") },
+                        label = { Text("Task Title *") },
                         placeholder = { Text("Enter task title...") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         isError = titleError.isNotEmpty(),
-                        supportingText = if (titleError.isNotEmpty()) {
-                            { Text(titleError, color = MaterialTheme.colorScheme.error) }
-                        } else null
+                        supportingText = {
+                            if (titleError.isNotEmpty()) {
+                                Text(titleError, color = MaterialTheme.colorScheme.error)
+                            } else {
+                                Text("${title.length}/100 characters")
+                            }
+                        },
+                        enabled = !isSaving
                     )
 
                     // Description Field
                     OutlinedTextField(
                         value = description,
-                        onValueChange = { description = it },
+                        onValueChange = {
+                            if (it.length <= 500) {
+                                description = it
+                                if (descriptionError.isNotEmpty()) descriptionError = ""
+                            }
+                        },
                         label = { Text("Description (Optional)") },
                         placeholder = { Text("Add task details...") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
-                        maxLines = 5
+                        maxLines = 5,
+                        isError = descriptionError.isNotEmpty(),
+                        supportingText = {
+                            if (descriptionError.isNotEmpty()) {
+                                Text(descriptionError, color = MaterialTheme.colorScheme.error)
+                            } else {
+                                Text("${description.length}/500 characters")
+                            }
+                        },
+                        enabled = !isSaving
                     )
                 }
             }
@@ -175,7 +233,8 @@ fun AddTask(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
-                )
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -184,40 +243,50 @@ fun AddTask(
                     Text(
                         text = "Task Details",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
                     )
 
                     // Due Date Field
                     OutlinedTextField(
                         value = dateFormatter.format(selectedDate),
                         onValueChange = { },
-                        label = { Text("Due Date") },
+                        label = { Text("Due Date *") },
                         readOnly = true,
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                            IconButton(onClick = { isDatePickerVisible = true }) {
+                            IconButton(
+                                onClick = { isDatePickerVisible = true },
+                                enabled = !isSaving
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.DateRange,
                                     contentDescription = "Select Date"
                                 )
                             }
-                        }
+                        },
+                        enabled = !isSaving
                     )
 
                     // Priority Dropdown
                     ExposedDropdownMenuBox(
-                        expanded = isPriorityExpanded,
-                        onExpandedChange = { isPriorityExpanded = it }
+                        expanded = isPriorityExpanded && !isSaving,
+                        onExpandedChange = { if (!isSaving) isPriorityExpanded = it }
                     ) {
                         OutlinedTextField(
                             value = selectedPriority.displayName,
                             onValueChange = { },
                             readOnly = true,
-                            label = { Text("Priority") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isPriorityExpanded) },
+                            label = { Text("Priority *") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = isPriorityExpanded
+                                )
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(),
+                            enabled = !isSaving
                         )
 
                         ExposedDropdownMenu(
@@ -238,18 +307,23 @@ fun AddTask(
 
                     // Category Dropdown
                     ExposedDropdownMenuBox(
-                        expanded = isCategoryExpanded,
-                        onExpandedChange = { isCategoryExpanded = it }
+                        expanded = isCategoryExpanded && !isSaving,
+                        onExpandedChange = { if (!isSaving) isCategoryExpanded = it }
                     ) {
                         OutlinedTextField(
                             value = "${selectedCategory.icon} ${selectedCategory.displayName}",
                             onValueChange = { },
                             readOnly = true,
-                            label = { Text("Category") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isCategoryExpanded) },
+                            label = { Text("Category *") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = isCategoryExpanded
+                                )
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(),
+                            enabled = !isSaving
                         )
 
                         ExposedDropdownMenu(
@@ -279,7 +353,8 @@ fun AddTask(
             ) {
                 OutlinedButton(
                     onClick = { navController.navigateUp() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    enabled = !isSaving
                 ) {
                     Text("Cancel")
                 }
@@ -289,18 +364,21 @@ fun AddTask(
                         if (validateForm()) {
                             isSaving = true
                             taskViewModel.createTask(
-                                title = title,
-                                description = description,
+                                title = title.trim(),
+                                description = description.trim(),
                                 dueDate = selectedDate,
                                 priority = selectedPriority,
                                 category = selectedCategory
                             ) { success, errorMessage ->
                                 isSaving = false
                                 if (success) {
-                                    AppUtil.showToast(context, "Task created successfully!")
+                                    AppUtil.showToast(context, "✅ Task created successfully!")
                                     navController.navigateUp()
                                 } else {
-                                    AppUtil.showToast(context, errorMessage ?: "Failed to create task")
+                                    AppUtil.showToast(
+                                        context,
+                                        errorMessage ?: "❌ Failed to create task"
+                                    )
                                 }
                             }
                         } else {
@@ -310,19 +388,56 @@ fun AddTask(
                     enabled = !isSaving && title.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(if (isSaving) "Creating..." else "Create Task")
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text("Create Task")
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
-    // Simple date picker implementation
+    // Material3 Date Picker Dialog
     if (isDatePickerVisible) {
-        // For now, set date to tomorrow (we can enhance this later with a proper date picker)
-        selectedDate = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_MONTH, 1)
-        }.time
-        isDatePickerVisible = false
-        AppUtil.showToast(context, "Date set to tomorrow")
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.time
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { isDatePickerVisible = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val calendar = Calendar.getInstance().apply {
+                                timeInMillis = millis
+                                // Set time to end of day
+                                set(Calendar.HOUR_OF_DAY, 23)
+                                set(Calendar.MINUTE, 59)
+                                set(Calendar.SECOND, 59)
+                            }
+                            selectedDate = calendar.time
+                        }
+                        isDatePickerVisible = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { isDatePickerVisible = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 }

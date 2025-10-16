@@ -38,11 +38,11 @@ class TaskViewModel : ViewModel() {
     val error: StateFlow<String?> = _error.asStateFlow()
 
     init {
-        Log.d("TaskViewModel", "TaskViewModel initialized with subtask support")
+        Log.d("TaskViewModel", "TaskViewModel initialized")
         loadTasks()
     }
 
-    // Create a new task in user's subcollection
+    // Create a new task
     fun createTask(
         title: String,
         description: String,
@@ -73,9 +73,6 @@ class TaskViewModel : ViewModel() {
                         updatedAt = Timestamp.now()
                     )
 
-                    Log.d("TaskViewModel", "Task object created: $task")
-
-                    // Save to subcollection: users/{userId}/tasks/{taskId}
                     firestore.collection("users")
                         .document(user.uid)
                         .collection("tasks")
@@ -83,9 +80,7 @@ class TaskViewModel : ViewModel() {
                         .set(task)
                         .await()
 
-                    Log.d("TaskViewModel", "Task saved to subcollection successfully")
-
-                    // Refresh tasks after creation
+                    Log.d("TaskViewModel", "Task created successfully")
                     loadTasks()
                     onResult(true, null)
 
@@ -103,9 +98,68 @@ class TaskViewModel : ViewModel() {
         }
     }
 
+    // Update an existing task
+    fun updateTask(
+        taskId: String,
+        title: String,
+        description: String,
+        dueDate: Date,
+        priority: TaskPriority,
+        category: TaskCategory,
+        onResult: (Boolean, String?) -> Unit
+    ) {
+        Log.d("TaskViewModel", "Updating task: $taskId")
+        val currentUser = auth.currentUser
+        currentUser?.let { user ->
+            viewModelScope.launch {
+                try {
+                    _isLoading.value = true
+
+                    val task = _tasks.value.find { it.id == taskId }
+                    task?.let {
+                        val updatedTask = it.copy(
+                            title = title.trim(),
+                            description = description.trim(),
+                            dueDate = Timestamp(dueDate),
+                            priority = priority,
+                            category = category,
+                            updatedAt = Timestamp.now()
+                        )
+
+                        firestore.collection("users")
+                            .document(user.uid)
+                            .collection("tasks")
+                            .document(taskId)
+                            .set(updatedTask)
+                            .await()
+
+                        // Update local state
+                        _tasks.value = _tasks.value.map { currentTask ->
+                            if (currentTask.id == taskId) updatedTask else currentTask
+                        }
+
+                        Log.d("TaskViewModel", "Task updated successfully")
+                        onResult(true, null)
+                    } ?: run {
+                        onResult(false, "Task not found")
+                    }
+
+                } catch (e: Exception) {
+                    Log.e("TaskViewModel", "Error updating task: ${e.message}", e)
+                    _error.value = e.localizedMessage
+                    onResult(false, e.localizedMessage ?: "Failed to update task")
+                } finally {
+                    _isLoading.value = false
+                }
+            }
+        } ?: run {
+            onResult(false, "User not authenticated")
+        }
+    }
+
     // Load all tasks from user's subcollection
     fun loadTasks() {
-        Log.d("TaskViewModel", "Loading tasks from subcollection...")
+        Log.d("TaskViewModel", "Loading tasks...")
         val currentUser = auth.currentUser
         currentUser?.let { user ->
             viewModelScope.launch {
@@ -113,9 +167,6 @@ class TaskViewModel : ViewModel() {
                     _isLoading.value = true
                     _error.value = null
 
-                    Log.d("TaskViewModel", "Loading tasks for user: ${user.uid}")
-
-                    // Query subcollection: users/{userId}/tasks
                     val querySnapshot = firestore.collection("users")
                         .document(user.uid)
                         .collection("tasks")
@@ -123,25 +174,18 @@ class TaskViewModel : ViewModel() {
                         .get()
                         .await()
 
-                    Log.d("TaskViewModel", "Found ${querySnapshot.documents.size} documents in subcollection")
+                    Log.d("TaskViewModel", "Found ${querySnapshot.documents.size} tasks")
 
                     val taskList = querySnapshot.documents.mapNotNull { document ->
-                        Log.d("TaskViewModel", "Document ID: ${document.id}")
-                        Log.d("TaskViewModel", "Document data: ${document.data}")
                         try {
-                            val task = document.toObject(TaskModel::class.java)
-                            Log.d("TaskViewModel", "Parsed task: $task")
-                            task
+                            document.toObject(TaskModel::class.java)
                         } catch (e: Exception) {
                             Log.e("TaskViewModel", "Error parsing document ${document.id}: ${e.message}")
                             null
                         }
                     }
 
-                    Log.d("TaskViewModel", "Successfully parsed ${taskList.size} tasks")
                     _tasks.value = taskList
-
-                    // Load subtasks for all tasks
                     loadAllSubtasks(user.uid, taskList.map { it.id })
 
                 } catch (e: Exception) {
@@ -152,7 +196,7 @@ class TaskViewModel : ViewModel() {
                 }
             }
         } ?: run {
-            Log.e("TaskViewModel", "No current user found when loading tasks")
+            Log.e("TaskViewModel", "No current user found")
         }
     }
 
@@ -181,7 +225,6 @@ class TaskViewModel : ViewModel() {
                 }
 
                 subtaskMap[taskId] = subtaskList
-                Log.d("TaskViewModel", "Loaded ${subtaskList.size} subtasks for task $taskId")
             }
 
             _subtasks.value = subtaskMap
@@ -220,7 +263,6 @@ class TaskViewModel : ViewModel() {
                         order = nextOrder
                     )
 
-                    // Save to nested subcollection: users/{userId}/tasks/{taskId}/subtasks/{subtaskId}
                     firestore.collection("users")
                         .document(user.uid)
                         .collection("tasks")
@@ -236,7 +278,7 @@ class TaskViewModel : ViewModel() {
                     newSubtaskMap[taskId] = updatedSubtasks
                     _subtasks.value = newSubtaskMap
 
-                    Log.d("TaskViewModel", "Subtask created successfully: $title")
+                    Log.d("TaskViewModel", "Subtask created successfully")
                     onResult(true, null)
 
                 } catch (e: Exception) {
@@ -268,7 +310,6 @@ class TaskViewModel : ViewModel() {
                             updatedAt = Timestamp.now()
                         )
 
-                        // Update in Firebase
                         firestore.collection("users")
                             .document(user.uid)
                             .collection("tasks")
@@ -308,7 +349,6 @@ class TaskViewModel : ViewModel() {
         currentUser?.let { user ->
             viewModelScope.launch {
                 try {
-                    // Delete from Firebase
                     firestore.collection("users")
                         .document(user.uid)
                         .collection("tasks")
@@ -334,7 +374,7 @@ class TaskViewModel : ViewModel() {
         }
     }
 
-    // Update task completion status
+    // Toggle task completion
     fun toggleTaskCompletion(taskId: String, onResult: (Boolean, String?) -> Unit) {
         val currentUser = auth.currentUser
         currentUser?.let { user ->
@@ -347,7 +387,6 @@ class TaskViewModel : ViewModel() {
                             updatedAt = Timestamp.now()
                         )
 
-                        // Update in subcollection
                         firestore.collection("users")
                             .document(user.uid)
                             .collection("tasks")
@@ -355,7 +394,6 @@ class TaskViewModel : ViewModel() {
                             .set(updatedTask)
                             .await()
 
-                        // Update local state
                         _tasks.value = _tasks.value.map { currentTask ->
                             if (currentTask.id == taskId) updatedTask else currentTask
                         }
@@ -372,7 +410,7 @@ class TaskViewModel : ViewModel() {
         }
     }
 
-    // Delete a task from subcollection
+    // Delete a task
     fun deleteTask(taskId: String, onResult: (Boolean, String?) -> Unit) {
         val currentUser = auth.currentUser
         currentUser?.let { user ->
@@ -463,7 +501,6 @@ class TaskViewModel : ViewModel() {
     // Get task statistics
     fun getTaskStats(): TaskStats {
         val allTasks = _tasks.value
-        Log.d("TaskViewModel", "Getting task stats. Total tasks: ${allTasks.size}")
         return TaskStats(
             total = allTasks.size,
             completed = allTasks.count { it.isCompleted },
