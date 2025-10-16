@@ -1,5 +1,8 @@
 package com.fak.classmate.screens
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +19,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -30,16 +37,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,19 +81,31 @@ fun Home(
     navController: NavController,
     taskViewModel: TaskViewModel = viewModel()
 ) {
-    // Collect task data from ViewModel
     val tasks = taskViewModel.tasks.collectAsState().value
+    val isLoading = taskViewModel.isLoading.collectAsState().value
+    val error = taskViewModel.error.collectAsState().value
     val taskStats = taskViewModel.getTaskStats()
     val tasksDueToday = taskViewModel.getTasksDueToday()
+
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var taskToDelete by remember { mutableStateOf<TaskModel?>(null) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     // Refresh tasks when screen is loaded
     LaunchedEffect(Unit) {
         taskViewModel.loadTasks()
     }
 
-    // Drawer state and coroutine scope
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
+    // Show error snackbar
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it)
+            taskViewModel.clearError()
+        }
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -91,11 +121,10 @@ fun Home(
         }
     ) {
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = {
-                        TimeDisplay()
-                    },
+                    title = { TimeDisplay() },
                     navigationIcon = {
                         IconButton(onClick = {
                             scope.launch {
@@ -140,7 +169,6 @@ fun Home(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Tasks Due Today Card
                         Card(
                             modifier = Modifier.weight(1f),
                             colors = CardDefaults.cardColors(
@@ -168,7 +196,6 @@ fun Home(
                             }
                         }
 
-                        // Total Tasks Card
                         Card(
                             modifier = Modifier.weight(1f),
                             colors = CardDefaults.cardColors(
@@ -192,7 +219,6 @@ fun Home(
                             }
                         }
 
-                        // Completed Tasks Card
                         Card(
                             modifier = Modifier.weight(1f),
                             colors = CardDefaults.cardColors(
@@ -220,14 +246,25 @@ fun Home(
                 }
 
                 item {
-                    // Add new task button
                     Button(
-                        onClick = {
-                            navController.navigate("addTask")
-                        },
+                        onClick = { navController.navigate("addTask") },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("+ Add new task")
+                    }
+                }
+
+                // Loading indicator
+                if (isLoading && tasks.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
 
@@ -242,23 +279,23 @@ fun Home(
                         )
                     }
 
-                    items(tasks) { task ->
-                        TaskCard(
+                    items(tasks, key = { it.id }) { task ->
+                        SwipeableTaskCard(
                             task = task,
                             onTaskClick = {
-                                // Navigate to task detail screen with task ID
                                 navController.navigate("taskDetail/${task.id}")
                             },
                             onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
-                                    // Task completion toggled
-                                }
+                                taskViewModel.toggleTaskCompletion(task.id) { _, _ -> }
+                            },
+                            onDelete = {
+                                taskToDelete = task
+                                showDeleteDialog = true
                             }
                         )
                     }
-                } else {
+                } else if (!isLoading) {
                     item {
-                        // Empty state
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
@@ -284,13 +321,10 @@ fun Home(
                     }
                 }
 
-                // Quick actions for existing tasks
                 if (taskStats.total > 0) {
                     item {
                         OutlinedButton(
-                            onClick = {
-                                // TODO: Navigate to task list screen
-                            },
+                            onClick = { /* TODO: Navigate to all tasks view */ },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("View All Tasks")
@@ -299,6 +333,120 @@ fun Home(
                 }
             }
         }
+    }
+
+    // Delete Confirmation Dialog
+    if (showDeleteDialog && taskToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Task?") },
+            text = {
+                Text("Are you sure you want to delete \"${taskToDelete?.title}\"? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        taskToDelete?.let { task ->
+                            taskViewModel.deleteTask(task.id) { success, _ ->
+                                if (success) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar("✅ Task deleted")
+                                    }
+                                }
+                            }
+                        }
+                        showDeleteDialog = false
+                        taskToDelete = null
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    taskToDelete = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeableTaskCard(
+    task: TaskModel,
+    onTaskClick: () -> Unit,
+    onToggleComplete: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val swipeState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { dismissValue ->
+            when (dismissValue) {
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    onToggleComplete()
+                    false // Return false to reset the swipe
+                }
+                SwipeToDismissBoxValue.EndToStart -> {
+                    onDelete()
+                    false // Return false to reset the swipe
+                }
+                SwipeToDismissBoxValue.Settled -> false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = swipeState,
+        backgroundContent = {
+            val color by animateColorAsState(
+                when (swipeState.targetValue) {
+                    SwipeToDismissBoxValue.Settled -> MaterialTheme.colorScheme.surface
+                    SwipeToDismissBoxValue.StartToEnd -> Color(0xFF4CAF50) // Green for complete
+                    SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
+                },
+                label = "background color"
+            )
+            val scale by animateFloatAsState(
+                if (swipeState.targetValue == SwipeToDismissBoxValue.Settled) 0.75f else 1f,
+                label = "icon scale"
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(color, shape = RoundedCornerShape(12.dp))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = when (swipeState.dismissDirection) {
+                    SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                    SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                    else -> Alignment.Center
+                }
+            ) {
+                Icon(
+                    imageVector = when (swipeState.dismissDirection) {
+                        SwipeToDismissBoxValue.StartToEnd -> Icons.Default.CheckCircle
+                        SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
+                        else -> Icons.Default.CheckCircle
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.scale(scale),
+                    tint = Color.White
+                )
+            }
+        },
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true
+    ) {
+        TaskCard(
+            task = task,
+            onTaskClick = onTaskClick,
+            onToggleComplete = onToggleComplete,
+            modifier = modifier
+        )
     }
 }
 
@@ -312,11 +460,10 @@ fun TaskCard(
     val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     val timeFormatter = SimpleDateFormat("h:mm a", Locale.getDefault())
 
-    // Get priority color
     val priorityColor = when (task.priority) {
-        TaskPriority.HIGH -> Color(0xFFE57373)     // Light Red
-        TaskPriority.MEDIUM -> Color(0xFFFFB74D)   // Light Orange
-        TaskPriority.LOW -> Color(0xFF81C784)      // Light Green
+        TaskPriority.HIGH -> Color(0xFFE57373)
+        TaskPriority.MEDIUM -> Color(0xFFFFB74D)
+        TaskPriority.LOW -> Color(0xFF81C784)
     }
 
     Card(
@@ -341,7 +488,6 @@ fun TaskCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Task content
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = task.title,
@@ -384,11 +530,7 @@ fun TaskCard(
                     )
                 }
 
-                // Priority flag
-                Box(
-                    modifier = Modifier
-                        .padding(start = 8.dp)
-                ) {
+                Box(modifier = Modifier.padding(start = 8.dp)) {
                     Icon(
                         imageVector = Icons.Default.Warning,
                         contentDescription = "${task.priority.displayName} Priority",
@@ -400,20 +542,17 @@ fun TaskCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Bottom row with category and completion status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Category
                 Text(
                     text = "${task.category.icon} ${task.category.displayName}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
 
-                // Completion status
                 Text(
                     text = if (task.isCompleted) "✅ Completed" else "⏳ Pending",
                     style = MaterialTheme.typography.bodySmall,

@@ -111,7 +111,7 @@ fun TaskDetail(
                 actions = {
                     if (task != null) {
                         IconButton(onClick = {
-                            // TODO: Navigate to edit task screen
+                            navController.navigate("editTask/$taskId")
                         }) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
