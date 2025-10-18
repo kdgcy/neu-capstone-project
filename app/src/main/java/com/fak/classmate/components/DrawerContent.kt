@@ -116,7 +116,7 @@ fun DrawerContent(
     // Settings items
     val settingsItems = listOf(
         DrawerMenuItem("Settings", Icons.Default.Settings),
-        DrawerMenuItem("About", Icons.Default.Info),
+        DrawerMenuItem("About", Icons.Default.Info, route = "about"),
     )
 
     // Logout item
@@ -310,10 +310,14 @@ fun DrawerContent(
                         },
                         selected = false,
                         onClick = {
-                            item.onClick?.invoke()
                             scope.launch {
                                 onCloseDrawer()
                             }
+                            // Navigate after closing drawer
+                            item.route?.let { route ->
+                                navController.navigate(route)
+                            }
+                            item.onClick?.invoke()
                         },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                         colors = NavigationDrawerItemDefaults.colors(

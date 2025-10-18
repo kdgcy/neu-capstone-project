@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.fak.classmate.screens.About
 import com.fak.classmate.screens.AddTask
 import com.fak.classmate.screens.Auth
 import com.fak.classmate.screens.EditTask
@@ -35,6 +36,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("profile") { Profile(modifier, navController) }
         composable("splash") { Splash(modifier, navController) }
         composable("addTask") { AddTask(modifier, navController, taskViewModel) }
+        composable("about") { About(modifier, navController) }
         composable("taskDetail/{taskId}") { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
             TaskDetail(modifier, navController, taskId, taskViewModel)
