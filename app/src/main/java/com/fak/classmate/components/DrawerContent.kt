@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -109,7 +108,7 @@ fun DrawerContent(
     val navigationItems = listOf(
         DrawerMenuItem("Home", Icons.Default.Home, route = "home"),
         DrawerMenuItem("All Tasks", Icons.Default.List),
-        DrawerMenuItem("Calendar", Icons.Default.DateRange),
+        DrawerMenuItem("Calendar", Icons.Default.DateRange, route = "calendar"),
         DrawerMenuItem("Statistics", Icons.Outlined.Star),
     )
 
@@ -262,14 +261,20 @@ fun DrawerContent(
                         },
                         selected = false,
                         onClick = {
+                            // Execute custom onClick if provided
                             item.onClick?.invoke()
+
+                            // Close drawer
                             scope.launch {
                                 onCloseDrawer()
                             }
+
+                            // Navigate to route if provided
                             item.route?.let { route ->
-                                if (route == "home") {
-                                    navController.navigate(route) {
-                                        popUpTo(route) { inclusive = true }
+                                navController.navigate(route) {
+                                    // Only pop up to home for home route
+                                    if (route == "home") {
+                                        popUpTo("home") { inclusive = true }
                                     }
                                 }
                             }

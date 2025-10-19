@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import com.fak.classmate.screens.About
 import com.fak.classmate.screens.AddTask
 import com.fak.classmate.screens.Auth
+import com.fak.classmate.screens.Calendar
 import com.fak.classmate.screens.EditTask
 import com.fak.classmate.screens.Home
 import com.fak.classmate.screens.Login
@@ -37,6 +38,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("splash") { Splash(modifier, navController) }
         composable("addTask") { AddTask(modifier, navController, taskViewModel) }
         composable("about") { About(modifier, navController) }
+        composable("calendar") { Calendar(modifier, navController, taskViewModel) }
         composable("taskDetail/{taskId}") { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
             TaskDetail(modifier, navController, taskId, taskViewModel)
