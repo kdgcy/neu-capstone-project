@@ -21,7 +21,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -168,22 +167,6 @@ fun SignUp(
                 )
             )
     ) {
-        // Back button
-        IconButton(
-            onClick = { navController.navigateUp() },
-            modifier = Modifier
-                .padding(16.dp)
-                .alpha(contentAlpha.value)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.2f))
-        ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White
-            )
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()

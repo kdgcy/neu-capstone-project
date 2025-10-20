@@ -15,9 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.fak.classmate.model.TaskModel
@@ -204,10 +200,7 @@ fun Calendar(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Replace the calendar grid section in your Calendar.kt (around lines 163-202)
-// with this FIXED version:
-
-// Calendar days
+                        // Calendar days
                         val totalCells = (firstDayOfWeek - 1) + daysInMonth
                         val rows = (totalCells + 6) / 7
 
@@ -219,7 +212,7 @@ fun Calendar(
                                 ) {
                                     for (dayOfWeek in 1..7) {
                                         val cellIndex = week * 7 + dayOfWeek
-                                        // FIX: Changed from "cellIndex - firstDayOfWeek + 2" to "cellIndex - firstDayOfWeek + 1"
+
                                         val dayNumber = cellIndex - firstDayOfWeek + 1
 
                                         if (dayNumber in 1..daysInMonth) {
