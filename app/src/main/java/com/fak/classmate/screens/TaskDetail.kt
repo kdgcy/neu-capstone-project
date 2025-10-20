@@ -1,5 +1,6 @@
 package com.fak.classmate.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -468,16 +469,20 @@ fun TaskDetail(
                     }
                 }
 
-                // Action Button
+                // Action Button - ✅ FIXED HERE!
                 item {
                     Button(
                         onClick = {
                             isLoading = true
+                            Log.d("TaskDetail", "BEFORE toggle - task completed: ${task.isCompleted}")
                             taskViewModel.toggleTaskCompletion(taskId) { success, errorMessage ->
                                 isLoading = false
+                                Log.d("TaskDetail", "Toggle result: success=$success")
                                 if (success) {
                                     val message = if (!task.isCompleted) "Task completed!" else "Task marked as pending"
                                     AppUtil.showToast(context, message)
+                                    taskViewModel.loadTasks()
+                                    Log.d("TaskDetail", "Called loadTasks()")
                                 } else {
                                     AppUtil.showToast(context, errorMessage ?: "Failed to update task")
                                 }

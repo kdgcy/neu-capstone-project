@@ -1,5 +1,6 @@
 package com.fak.classmate.screens
 
+import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -58,6 +59,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -100,7 +104,12 @@ fun Home(
     val tasks = taskViewModel.tasks.collectAsState().value
     val isLoading = taskViewModel.isLoading.collectAsState().value
     val error = taskViewModel.error.collectAsState().value
-    val taskStats = taskViewModel.getTaskStats()
+
+    // ✅ FIX: Recalculate stats whenever tasks change!
+    val taskStats = remember(tasks) {
+        Log.d("Home", "Recalculating stats - tasks size: ${tasks.size}, completed: ${tasks.count { it.isCompleted }}")
+        taskViewModel.getTaskStats()
+    }
 
     // Filter and sort states
     var searchQuery by remember { mutableStateOf("") }
@@ -115,9 +124,14 @@ fun Home(
     var taskToDelete by remember { mutableStateOf<TaskModel?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // Refresh tasks
-    LaunchedEffect(Unit) {
-        taskViewModel.loadTasks()
+    // ✅ PROPER FIX: Reload tasks when screen becomes visible
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner.lifecycle) {
+        lifecycleOwner.lifecycle.currentStateFlow.collect { state ->
+            if (state == Lifecycle.State.RESUMED) {
+                taskViewModel.loadTasks()
+            }
+        }
     }
 
     // Show error snackbar
@@ -349,7 +363,11 @@ fun Home(
                             task = task,
                             onTaskClick = { navController.navigate("taskDetail/${task.id}") },
                             onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { _, _ -> }
+                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
+                                    if (success) {
+                                        taskViewModel.loadTasks()  // ✅ FIXED!
+                                    }
+                                }
                             },
                             onDelete = {
                                 taskToDelete = task
@@ -373,7 +391,11 @@ fun Home(
                             task = task,
                             onTaskClick = { navController.navigate("taskDetail/${task.id}") },
                             onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { _, _ -> }
+                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
+                                    if (success) {
+                                        taskViewModel.loadTasks()  // ✅ FIXED!
+                                    }
+                                }
                             },
                             onDelete = {
                                 taskToDelete = task
@@ -397,7 +419,11 @@ fun Home(
                             task = task,
                             onTaskClick = { navController.navigate("taskDetail/${task.id}") },
                             onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { _, _ -> }
+                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
+                                    if (success) {
+                                        taskViewModel.loadTasks()  // ✅ FIXED!
+                                    }
+                                }
                             },
                             onDelete = {
                                 taskToDelete = task
@@ -421,7 +447,11 @@ fun Home(
                             task = task,
                             onTaskClick = { navController.navigate("taskDetail/${task.id}") },
                             onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { _, _ -> }
+                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
+                                    if (success) {
+                                        taskViewModel.loadTasks()  // ✅ FIXED!
+                                    }
+                                }
                             },
                             onDelete = {
                                 taskToDelete = task
