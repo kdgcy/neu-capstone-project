@@ -13,6 +13,7 @@ import com.fak.classmate.screens.Calendar
 import com.fak.classmate.screens.EditTask
 import com.fak.classmate.screens.Home
 import com.fak.classmate.screens.Login
+import com.fak.classmate.screens.Pomodoro
 import com.fak.classmate.screens.Profile
 import com.fak.classmate.screens.SignUp
 import com.fak.classmate.screens.Splash
@@ -38,6 +39,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("splash") { Splash(modifier, navController) }
         composable("addTask") { AddTask(modifier, navController, taskViewModel) }
         composable("about") { About(modifier, navController) }
+        composable("pomodoro") { Pomodoro(modifier, navController) }
         composable("calendar") { Calendar(modifier, navController, taskViewModel) }
         composable("taskDetail/{taskId}") { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""

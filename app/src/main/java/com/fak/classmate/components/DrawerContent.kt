@@ -13,14 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessAlarm
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -100,9 +99,9 @@ fun DrawerContent(
     // Main navigation items
     val navigationItems = listOf(
         DrawerMenuItem("Home", Icons.Default.Home, route = "home"),
-        DrawerMenuItem("All Tasks", Icons.Default.List),
+        DrawerMenuItem("Profile", Icons.Default.AccountCircle, route = "profile"),
         DrawerMenuItem("Calendar", Icons.Default.DateRange, route = "calendar"),
-        DrawerMenuItem("Statistics", Icons.Outlined.Star),
+        DrawerMenuItem("Pomodoro Timer", Icons.Default.AccessAlarm, route = "pomodoro")
     )
 
     // Settings items
@@ -340,7 +339,7 @@ fun DrawerContent(
 
             // App Version
             Text(
-                text = "ClassMate v1.0.0",
+                text = "ClassMate 2025",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 modifier = Modifier
