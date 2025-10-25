@@ -17,37 +17,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -59,9 +49,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -73,18 +60,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.fak.classmate.components.DrawerContent
-import com.fak.classmate.model.TaskCategory
 import com.fak.classmate.model.TaskModel
 import com.fak.classmate.model.TaskPriority
 import com.fak.classmate.viewmodel.TaskViewModel
@@ -92,7 +77,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,18 +89,6 @@ fun Home(
     val isLoading = taskViewModel.isLoading.collectAsState().value
     val error = taskViewModel.error.collectAsState().value
 
-    // ✅ FIX: Recalculate stats whenever tasks change!
-    val taskStats = remember(tasks) {
-        Log.d("Home", "Recalculating stats - tasks size: ${tasks.size}, completed: ${tasks.count { it.isCompleted }}")
-        taskViewModel.getTaskStats()
-    }
-
-    // Filter and sort states
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("All") }
-    var sortBy by remember { mutableStateOf("Date") }
-    var showSortMenu by remember { mutableStateOf(false) }
-
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -124,7 +96,7 @@ fun Home(
     var taskToDelete by remember { mutableStateOf<TaskModel?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    // ✅ PROPER FIX: Reload tasks when screen becomes visible
+    // Reload tasks when screen becomes visible
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner.lifecycle) {
         lifecycleOwner.lifecycle.currentStateFlow.collect { state ->
@@ -142,41 +114,15 @@ fun Home(
         }
     }
 
-    // Filter and sort tasks
-    val filteredTasks = tasks
-        .filter { task ->
-            // Search filter
-            val matchesSearch = task.title.contains(searchQuery, ignoreCase = true) ||
-                    task.description.contains(searchQuery, ignoreCase = true)
-
-            // Status filter
-            val matchesFilter = when (selectedFilter) {
-                "Pending" -> !task.isCompleted
-                "Completed" -> task.isCompleted
-                "Overdue" -> !task.isCompleted && task.dueDate.toDate().before(Date())
-                else -> true // "All"
-            }
-
-            matchesSearch && matchesFilter
-        }
-        .let { filteredList ->
-            // Sort
-            when (sortBy) {
-                "Priority" -> filteredList.sortedByDescending { it.priority.ordinal }
-                "Category" -> filteredList.sortedBy { it.category.displayName }
-                else -> filteredList.sortedBy { it.dueDate.toDate() } // "Date"
-            }
-        }
-
-    // Categorize tasks
-    val overdueTasks = filteredTasks.filter { !it.isCompleted && it.dueDate.toDate().before(Date()) }
-    val todayTasks = taskViewModel.getTasksDueToday().filter { filteredTasks.contains(it) }
-    val upcomingTasks = filteredTasks.filter {
+    // Categorize tasks by status and date
+    val overdueTasks = tasks.filter { !it.isCompleted && it.dueDate.toDate().before(Date()) }
+    val todayTasks = taskViewModel.getTasksDueToday().filter { !it.isCompleted }
+    val upcomingTasks = tasks.filter {
         !it.isCompleted &&
                 it.dueDate.toDate().after(Date()) &&
                 !todayTasks.contains(it)
     }
-    val completedTasks = filteredTasks.filter { it.isCompleted }
+    val completedTasks = tasks.filter { it.isCompleted }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -211,17 +157,6 @@ fun Home(
                             )
                         }
                     },
-                    actions = {
-                        IconButton(onClick = {
-                            navController.navigate("profile")
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "Profile",
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         titleContentColor = MaterialTheme.colorScheme.onSurface
@@ -234,249 +169,221 @@ fun Home(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Task")
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Task",
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         ) { innerPadding ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-
-                // Search Bar
-                item {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("Search tasks...") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        keyboardOptions = KeyboardOptions(
-                            autoCorrect = false,
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Search
-                        )
-                    )
+            if (isLoading && tasks.isEmpty()) {
+                // Show loading indicator only on first load
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item { Spacer(modifier = Modifier.height(8.dp)) }
 
-                // Stats Dashboard with Progress Circle
-                item {
-                    StatsSection(taskStats)
-                }
-
-                // Filter Chips
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        LazyRow(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Welcome message with task summary
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
                         ) {
-                            items(listOf("All", "Pending", "Completed", "Overdue")) { filter ->
-                                FilterChip(
-                                    selected = selectedFilter == filter,
-                                    onClick = { selectedFilter = filter },
-                                    label = {
-                                        Text(
-                                            filter,
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
+                            Column(
+                                modifier = Modifier.padding(20.dp)
+                            ) {
+                                Text(
+                                    text = "Hello! 👋",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = buildString {
+                                        append("You have ")
+                                        append("${tasks.count { !it.isCompleted }} pending task")
+                                        if (tasks.count { !it.isCompleted } != 1) append("s")
+                                        if (overdueTasks.isNotEmpty()) {
+                                            append(" • ${overdueTasks.size} overdue")
+                                        }
+                                    },
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                 )
                             }
                         }
+                    }
 
-                        // Sort Dropdown
-                        Box {
-                            OutlinedTextField(
-                                value = sortBy,
-                                onValueChange = { },
-                                readOnly = true,
-                                modifier = Modifier.width(120.dp),
-                                textStyle = MaterialTheme.typography.bodySmall,
-                                trailingIcon = {
-                                    IconButton(onClick = { showSortMenu = true }) {
-                                        Icon(
-                                            Icons.Default.KeyboardArrowDown,
-                                            contentDescription = "Sort",
-                                            modifier = Modifier.size(20.dp)
-                                        )
+                    // Overdue Tasks Section
+                    if (overdueTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "⚠️ Overdue",
+                                count = overdueTasks.size,
+                                color = Color(0xFFE57373)
+                            )
+                        }
+
+                        items(
+                            items = overdueTasks,
+                            key = { task -> task.id }
+                        ) { task ->
+                            SwipeableTaskCard(
+                                task = task,
+                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onToggleComplete = {
+                                    taskViewModel.toggleTaskCompletion(task.id) { success, error ->
+                                        if (!success) {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    error ?: "Failed to update task"
+                                                )
+                                            }
+                                        }
                                     }
                                 },
-                                singleLine = true
+                                onDelete = {
+                                    taskToDelete = task
+                                    showDeleteDialog = true
+                                }
                             )
+                        }
+                    }
 
-                            DropdownMenu(
-                                expanded = showSortMenu,
-                                onDismissRequest = { showSortMenu = false }
-                            ) {
-                                listOf("Date", "Priority", "Category").forEach { sort ->
-                                    DropdownMenuItem(
-                                        text = { Text(sort) },
-                                        onClick = {
-                                            sortBy = sort
-                                            showSortMenu = false
+                    // Today's Tasks Section
+                    if (todayTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "📅 Due Today",
+                                count = todayTasks.size,
+                                color = Color(0xFFFFB74D)
+                            )
+                        }
+
+                        items(
+                            items = todayTasks,
+                            key = { task -> task.id }
+                        ) { task ->
+                            SwipeableTaskCard(
+                                task = task,
+                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onToggleComplete = {
+                                    taskViewModel.toggleTaskCompletion(task.id) { success, error ->
+                                        if (!success) {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    error ?: "Failed to update task"
+                                                )
+                                            }
                                         }
-                                    )
+                                    }
+                                },
+                                onDelete = {
+                                    taskToDelete = task
+                                    showDeleteDialog = true
                                 }
-                            }
+                            )
                         }
                     }
-                }
 
-                // Loading
-                if (isLoading && tasks.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
+                    // Upcoming Tasks Section
+                    if (upcomingTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "📋 Upcoming",
+                                count = upcomingTasks.size,
+                                color = Color(0xFF64B5F6)
+                            )
+                        }
+
+                        items(
+                            items = upcomingTasks,
+                            key = { task -> task.id }
+                        ) { task ->
+                            SwipeableTaskCard(
+                                task = task,
+                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onToggleComplete = {
+                                    taskViewModel.toggleTaskCompletion(task.id) { success, error ->
+                                        if (!success) {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    error ?: "Failed to update task"
+                                                )
+                                            }
+                                        }
+                                    }
+                                },
+                                onDelete = {
+                                    taskToDelete = task
+                                    showDeleteDialog = true
+                                }
+                            )
                         }
                     }
-                }
 
-                // Overdue Tasks Section
-                if (overdueTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "⚠️ Overdue",
-                            count = overdueTasks.size,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    items(overdueTasks, key = { it.id }) { task ->
-                        SwipeableTaskCard(
-                            task = task,
-                            onTaskClick = { navController.navigate("taskDetail/${task.id}") },
-                            onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
-                                    if (success) {
-                                        taskViewModel.loadTasks()  // ✅ FIXED!
+                    // Completed Tasks Section
+                    if (completedTasks.isNotEmpty()) {
+                        item {
+                            SectionHeader(
+                                title = "✅ Completed",
+                                count = completedTasks.size,
+                                color = Color(0xFF81C784)
+                            )
+                        }
+
+                        items(
+                            items = completedTasks,
+                            key = { task -> task.id }
+                        ) { task ->
+                            SwipeableTaskCard(
+                                task = task,
+                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onToggleComplete = {
+                                    taskViewModel.toggleTaskCompletion(task.id) { success, error ->
+                                        if (!success) {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar(
+                                                    error ?: "Failed to update task"
+                                                )
+                                            }
+                                        }
                                     }
+                                },
+                                onDelete = {
+                                    taskToDelete = task
+                                    showDeleteDialog = true
                                 }
-                            },
-                            onDelete = {
-                                taskToDelete = task
-                                showDeleteDialog = true
-                            }
-                        )
+                            )
+                        }
                     }
-                }
 
-                // Today's Tasks Section
-                if (todayTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "📅 Due Today",
-                            count = todayTasks.size,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                    // Empty state
+                    if (tasks.isEmpty()) {
+                        item {
+                            EmptyState(message = "No tasks yet! Tap + to create your first task 🎯")
+                        }
                     }
-                    items(todayTasks, key = { it.id }) { task ->
-                        SwipeableTaskCard(
-                            task = task,
-                            onTaskClick = { navController.navigate("taskDetail/${task.id}") },
-                            onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
-                                    if (success) {
-                                        taskViewModel.loadTasks()  // ✅ FIXED!
-                                    }
-                                }
-                            },
-                            onDelete = {
-                                taskToDelete = task
-                                showDeleteDialog = true
-                            }
-                        )
-                    }
-                }
 
-                // Upcoming Tasks Section
-                if (upcomingTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "📆 Upcoming",
-                            count = upcomingTasks.size,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
-                    items(upcomingTasks, key = { it.id }) { task ->
-                        SwipeableTaskCard(
-                            task = task,
-                            onTaskClick = { navController.navigate("taskDetail/${task.id}") },
-                            onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
-                                    if (success) {
-                                        taskViewModel.loadTasks()  // ✅ FIXED!
-                                    }
-                                }
-                            },
-                            onDelete = {
-                                taskToDelete = task
-                                showDeleteDialog = true
-                            }
-                        )
-                    }
+                    item { Spacer(modifier = Modifier.height(80.dp)) }
                 }
-
-                // Completed Tasks Section (Collapsible)
-                if (completedTasks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "✅ Completed",
-                            count = completedTasks.size,
-                            color = Color(0xFF4CAF50)
-                        )
-                    }
-                    items(completedTasks.take(3), key = { it.id }) { task ->
-                        SwipeableTaskCard(
-                            task = task,
-                            onTaskClick = { navController.navigate("taskDetail/${task.id}") },
-                            onToggleComplete = {
-                                taskViewModel.toggleTaskCompletion(task.id) { success, _ ->
-                                    if (success) {
-                                        taskViewModel.loadTasks()  // ✅ FIXED!
-                                    }
-                                }
-                            },
-                            onDelete = {
-                                taskToDelete = task
-                                showDeleteDialog = true
-                            }
-                        )
-                    }
-                }
-
-                // Empty State
-                if (filteredTasks.isEmpty() && !isLoading) {
-                    item {
-                        EmptyState(
-                            message = if (searchQuery.isNotEmpty()) {
-                                "No tasks found matching \"$searchQuery\""
-                            } else if (selectedFilter != "All") {
-                                "No $selectedFilter tasks"
-                            } else {
-                                "No tasks yet. Create your first task!"
-                            }
-                        )
-                    }
-                }
-
-                item { Spacer(modifier = Modifier.height(80.dp)) }
             }
         }
     }
@@ -485,18 +392,31 @@ fun Home(
     if (showDeleteDialog && taskToDelete != null) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
             title = { Text("Delete Task?") },
             text = {
                 Text("Are you sure you want to delete \"${taskToDelete?.title}\"? This action cannot be undone.")
             },
             confirmButton = {
-                Button(
+                TextButton(
                     onClick = {
                         taskToDelete?.let { task ->
-                            taskViewModel.deleteTask(task.id) { success, _ ->
+                            taskViewModel.deleteTask(task.id) { success, errorMessage ->
                                 if (success) {
                                     scope.launch {
-                                        snackbarHostState.showSnackbar("✅ Task deleted")
+                                        snackbarHostState.showSnackbar("Task deleted")
+                                    }
+                                } else {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            errorMessage ?: "Failed to delete task"
+                                        )
                                     }
                                 }
                             }
@@ -505,7 +425,7 @@ fun Home(
                         taskToDelete = null
                     }
                 ) {
-                    Text("Delete")
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -516,90 +436,6 @@ fun Home(
                     Text("Cancel")
                 }
             }
-        )
-    }
-}
-
-@Composable
-fun StatsSection(stats: com.fak.classmate.viewmodel.TaskStats) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Progress Circle
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(100.dp)
-            ) {
-                val progress = if (stats.total > 0) {
-                    stats.completed.toFloat() / stats.total.toFloat()
-                } else 0f
-
-                CircularProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.size(100.dp),
-                    strokeWidth = 8.dp,
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "${(progress * 100).roundToInt()}%",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Complete",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            // Stats Grid
-            Column(
-                modifier = Modifier.weight(1f).padding(start = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                StatRow("Total", stats.total.toString(), MaterialTheme.colorScheme.onSurface)
-                StatRow("Pending", stats.pending.toString(), MaterialTheme.colorScheme.tertiary)
-                StatRow("Completed", stats.completed.toString(), Color(0xFF4CAF50))
-                if (stats.overdue > 0) {
-                    StatRow("Overdue", stats.overdue.toString(), MaterialTheme.colorScheme.error)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StatRow(label: String, value: String, color: Color) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = color
         )
     }
 }
