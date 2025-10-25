@@ -31,7 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -69,8 +68,6 @@ fun DrawerContent(
     var userEmail by remember { mutableStateOf("") }
     var firstname by remember { mutableStateOf("") }
     var lastname by remember { mutableStateOf("") }
-    var completedToday by remember { mutableIntStateOf(0) }
-    var currentStreak by remember { mutableIntStateOf(0) }
 
     val scope = rememberCoroutineScope()
     val currentUser = Firebase.auth.currentUser
@@ -97,10 +94,6 @@ fun DrawerContent(
                         }
                     }
                 }
-
-            // Get completed tasks today (you can enhance this)
-            completedToday = 0 // TODO: Calculate from tasks
-            currentStreak = 3 // TODO: Calculate actual streak
         }
     }
 
@@ -132,11 +125,11 @@ fun DrawerContent(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Beautiful Gradient Header
+            // Beautiful Gradient Header - Simplified
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(180.dp)
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -145,69 +138,44 @@ fun DrawerContent(
                             )
                         )
                     )
-                    .padding(24.dp)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.SpaceBetween
+                // Profile Section - Centered
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Profile Section
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    // Profile Avatar
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Profile Avatar
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = "Profile",
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-
-                        // User Info
-                        Column {
-                            Text(
-                                text = userDisplayName,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                            Text(
-                                text = userEmail,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                                fontSize = 13.sp
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Profile",
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
 
-                    // Quick Stats
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        StatBadge(
-                            label = "Today",
-                            value = completedToday.toString(),
-                            icon = "✅"
+                    // User Info
+                    Column {
+                        Text(
+                            text = userDisplayName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
-                        StatBadge(
-                            label = "Streak",
-                            value = "$currentStreak days",
-                            icon = "🔥"
-                        )
-                        StatBadge(
-                            label = "Level",
-                            value = "Pro",
-                            icon = "⭐"
+                        Text(
+                            text = userEmail,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                            fontSize = 13.sp
                         )
                     }
                 }
@@ -380,40 +348,5 @@ fun DrawerContent(
                     .padding(vertical = 16.dp)
             )
         }
-    }
-}
-
-@Composable
-fun StatBadge(label: String, value: String, icon: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.2f),
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = icon,
-                fontSize = 24.sp
-            )
-        }
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimary
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-            fontSize = 11.sp
-        )
     }
 }
