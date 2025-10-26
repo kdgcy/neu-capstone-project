@@ -1,5 +1,11 @@
 package com.fak.classmate.screens
 
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.Build
+import android.os.IBinder
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,8 +38,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,22 +54,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import kotlinx.coroutines.delay
-
-enum class TimerState {
-    IDLE, RUNNING, PAUSED
-}
-
-enum class SessionType(val displayName: String, val duration: Long, val color: Color) {
-    WORK("Focus Time", 25 * 60 * 1000L, Color(0xFF4DB6AC)),      // 25 minutes - Teal
-    SHORT_BREAK("Short Break", 5 * 60 * 1000L, Color(0xFF81C784)), // 5 minutes - Green
-    LONG_BREAK("Long Break", 15 * 60 * 1000L, Color(0xFF64B5F6))  // 15 minutes - Blue
-}
+import com.fak.classmate.service.PomodoroService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,42 +66,56 @@ fun Pomodoro(
     modifier: Modifier = Modifier,
     navController: NavController
 ) {
-    var timerState by remember { mutableStateOf(TimerState.IDLE) }
-    var currentSession by remember { mutableStateOf(SessionType.WORK) }
-    var timeLeftMillis by remember { mutableStateOf(currentSession.duration) }
-    var completedSessions by remember { mutableStateOf(0) }
-
     val context = LocalContext.current
-    val hapticFeedback = LocalHapticFeedback.current
 
-    // Timer logic
-    LaunchedEffect(timerState, timeLeftMillis) {
-        if (timerState == TimerState.RUNNING && timeLeftMillis > 0) {
-            delay(1000L)
-            timeLeftMillis -= 1000L
+    var pomodoroService by remember { mutableStateOf<PomodoroService?>(null) }
+    var isBound by remember { mutableStateOf(false) }
 
-            // Timer completed
-            if (timeLeftMillis <= 0) {
-                timerState = TimerState.IDLE
+    val serviceConnection = remember {
+        object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                val binder = service as PomodoroService.PomodoroServiceBinder
+                pomodoroService = binder.getService()
+                isBound = true
+            }
 
-                // Increment completed sessions
-                if (currentSession == SessionType.WORK) {
-                    completedSessions++
-
-                    // Switch to break
-                    currentSession = if (completedSessions % 4 == 0) {
-                        SessionType.LONG_BREAK
-                    } else {
-                        SessionType.SHORT_BREAK
-                    }
-                } else {
-                    // Switch back to work
-                    currentSession = SessionType.WORK
-                }
-
-                timeLeftMillis = currentSession.duration
+            override fun onServiceDisconnected(name: ComponentName?) {
+                pomodoroService = null
+                isBound = false
             }
         }
+    }
+
+    // Bind to service
+    DisposableEffect(Unit) {
+        val intent = Intent(context, PomodoroService::class.java)
+        context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+
+        onDispose {
+            if (isBound) {
+                context.unbindService(serviceConnection)
+                isBound = false
+            }
+        }
+    }
+
+    // Get state from service with proper null handling
+    val timeLeftMillis by if (pomodoroService != null) {
+        pomodoroService!!.timeLeftMillis.collectAsState()
+    } else {
+        remember { mutableLongStateOf(25 * 60 * 1000L) }
+    }
+
+    val isRunning by if (pomodoroService != null) {
+        pomodoroService!!.isRunning.collectAsState()
+    } else {
+        remember { mutableStateOf(false) }
+    }
+
+    val completedSessions by if (pomodoroService != null) {
+        pomodoroService!!.completedSessions.collectAsState()
+    } else {
+        remember { mutableStateOf(0) }
     }
 
     // Format time display
@@ -112,8 +123,11 @@ fun Pomodoro(
     val seconds = (timeLeftMillis / 1000) % 60
     val timeDisplay = String.format("%02d:%02d", minutes, seconds)
 
-    // Calculate progress for animation
-    val progress = 1f - (timeLeftMillis.toFloat() / currentSession.duration.toFloat())
+    // Calculate progress
+    val totalDuration = 25 * 60 * 1000L
+    val progress = 1f - (timeLeftMillis.toFloat() / totalDuration.toFloat())
+
+    val sessionColor = Color(0xFF4DB6AC) // Teal color
 
     Scaffold(
         topBar = {
@@ -152,7 +166,7 @@ fun Pomodoro(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
-                    containerColor = currentSession.color.copy(alpha = 0.1f)
+                    containerColor = sessionColor.copy(alpha = 0.1f)
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -163,10 +177,10 @@ fun Pomodoro(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = currentSession.displayName,
+                        text = "Focus Time",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = currentSession.color
+                        color = sessionColor
                     )
                     Text(
                         text = "Sessions completed: $completedSessions",
@@ -191,7 +205,7 @@ fun Pomodoro(
 
                     // Background circle
                     drawCircle(
-                        color = currentSession.color.copy(alpha = 0.2f),
+                        color = sessionColor.copy(alpha = 0.2f),
                         radius = radius,
                         center = center,
                         style = Stroke(width = strokeWidth)
@@ -200,7 +214,7 @@ fun Pomodoro(
                     // Progress arc
                     if (progress > 0f) {
                         drawArc(
-                            color = currentSession.color,
+                            color = sessionColor,
                             startAngle = -90f,
                             sweepAngle = 360f * progress,
                             useCenter = false,
@@ -219,7 +233,7 @@ fun Pomodoro(
                     modifier = Modifier
                         .size(280.dp)
                         .clip(CircleShape)
-                        .background(currentSession.color),
+                        .background(sessionColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -236,7 +250,7 @@ fun Pomodoro(
 
                         // Play/Pause icon
                         Icon(
-                            imageVector = if (timerState == TimerState.RUNNING) {
+                            imageVector = if (isRunning) {
                                 Icons.Default.Pause
                             } else {
                                 Icons.Default.PlayArrow
@@ -259,9 +273,18 @@ fun Pomodoro(
                 // Start/Pause Button
                 Button(
                     onClick = {
-                        timerState = when (timerState) {
-                            TimerState.IDLE, TimerState.PAUSED -> TimerState.RUNNING
-                            TimerState.RUNNING -> TimerState.PAUSED
+                        if (isRunning) {
+                            pomodoroService?.pauseTimer()
+                        } else {
+                            val intent = Intent(context, PomodoroService::class.java).apply {
+                                action = PomodoroService.ACTION_START
+                            }
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                context.startForegroundService(intent)
+                            } else {
+                                context.startService(intent)
+                            }
+                            pomodoroService?.startTimer()
                         }
                     },
                     modifier = Modifier.weight(1f).height(56.dp),
@@ -272,11 +295,7 @@ fun Pomodoro(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        text = when (timerState) {
-                            TimerState.IDLE -> "Start"
-                            TimerState.RUNNING -> "Pause"
-                            TimerState.PAUSED -> "Resume"
-                        },
+                        text = if (isRunning) "Pause" else "Start",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -285,8 +304,7 @@ fun Pomodoro(
                 // Reset Button
                 OutlinedButton(
                     onClick = {
-                        timerState = TimerState.IDLE
-                        timeLeftMillis = currentSession.duration
+                        pomodoroService?.resetTimer()
                     },
                     modifier = Modifier.weight(1f).height(56.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -307,7 +325,7 @@ fun Pomodoro(
 
             // Timer info
             Text(
-                text = "💡 Tip: Take regular breaks to maintain focus and productivity!",
+                text = "💡 Timer runs in background! You can navigate away or minimize the app.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 modifier = Modifier.padding(horizontal = 16.dp)
