@@ -70,7 +70,6 @@ class TaskViewModel : ViewModel() {
                         isCompleted = false,
                         userId = user.uid,
                         createdAt = Timestamp.now(),
-                        updatedAt = Timestamp.now()
                     )
 
                     firestore.collection("users")
@@ -123,7 +122,6 @@ class TaskViewModel : ViewModel() {
                             dueDate = Timestamp(dueDate),
                             priority = priority,
                             category = category,
-                            updatedAt = Timestamp.now()
                         )
 
                         firestore.collection("users")
@@ -259,7 +257,6 @@ class TaskViewModel : ViewModel() {
                         taskId = taskId,
                         userId = user.uid,
                         createdAt = Timestamp.now(),
-                        updatedAt = Timestamp.now(),
                         order = nextOrder
                     )
 
@@ -307,7 +304,6 @@ class TaskViewModel : ViewModel() {
                     subtask?.let {
                         val updatedSubtask = it.copy(
                             isCompleted = !it.isCompleted,
-                            updatedAt = Timestamp.now()
                         )
 
                         firestore.collection("users")
@@ -384,7 +380,6 @@ class TaskViewModel : ViewModel() {
                     task?.let {
                         val updatedTask = it.copy(
                             isCompleted = !it.isCompleted,
-                            updatedAt = Timestamp.now()
                         )
 
                         firestore.collection("users")

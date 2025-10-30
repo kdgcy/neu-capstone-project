@@ -167,7 +167,8 @@ fun Home(
                 FloatingActionButton(
                     onClick = { navController.navigate("addTask") },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = CircleShape
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -247,7 +248,7 @@ fun Home(
                         ) { task ->
                             SwipeableTaskCard(
                                 task = task,
-                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onTaskClick = { navController.navigate("taskView/${task.id}") },
                                 onToggleComplete = {
                                     taskViewModel.toggleTaskCompletion(task.id) { success, error ->
                                         if (!success) {
@@ -283,7 +284,7 @@ fun Home(
                         ) { task ->
                             SwipeableTaskCard(
                                 task = task,
-                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onTaskClick = { navController.navigate("taskView/${task.id}") },
                                 onToggleComplete = {
                                     taskViewModel.toggleTaskCompletion(task.id) { success, error ->
                                         if (!success) {
@@ -319,7 +320,7 @@ fun Home(
                         ) { task ->
                             SwipeableTaskCard(
                                 task = task,
-                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onTaskClick = { navController.navigate("taskView/${task.id}") },
                                 onToggleComplete = {
                                     taskViewModel.toggleTaskCompletion(task.id) { success, error ->
                                         if (!success) {
@@ -355,7 +356,7 @@ fun Home(
                         ) { task ->
                             SwipeableTaskCard(
                                 task = task,
-                                onTaskClick = { navController.navigate("taskDetail/${task.id}") },
+                                onTaskClick = { navController.navigate("taskView/${task.id}") },
                                 onToggleComplete = {
                                     taskViewModel.toggleTaskCompletion(task.id) { success, error ->
                                         if (!success) {
