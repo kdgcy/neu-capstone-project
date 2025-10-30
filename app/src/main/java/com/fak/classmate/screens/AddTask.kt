@@ -66,7 +66,7 @@ fun AddTask(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var selectedPriority by remember { mutableStateOf(TaskPriority.MEDIUM) }
-    var selectedCategory by remember { mutableStateOf(TaskCategory.ASSIGNMENT) }
+    var selectedCategory by remember { mutableStateOf(TaskCategory.OTHER) }
     var selectedDate by remember {
         mutableStateOf(Calendar.getInstance().apply {
             add(Calendar.DAY_OF_MONTH, 1)

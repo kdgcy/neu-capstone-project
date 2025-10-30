@@ -74,7 +74,7 @@ fun EditTask(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var selectedPriority by remember { mutableStateOf(TaskPriority.MEDIUM) }
-    var selectedCategory by remember { mutableStateOf(TaskCategory.ASSIGNMENT) }
+    var selectedCategory by remember { mutableStateOf(TaskCategory.OTHER) }
     var selectedDate by remember { mutableStateOf(Date()) }
     var isSaving by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }

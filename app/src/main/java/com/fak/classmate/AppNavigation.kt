@@ -18,6 +18,7 @@ import com.fak.classmate.screens.Profile
 import com.fak.classmate.screens.SignUp
 import com.fak.classmate.screens.Splash
 import com.fak.classmate.screens.TaskDetail
+import com.fak.classmate.screens.TaskView
 import com.fak.classmate.viewmodel.TaskViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
@@ -41,6 +42,7 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("about") { About(modifier, navController) }
         composable("pomodoro") { Pomodoro(modifier, navController) }
         composable("calendar") { Calendar(modifier, navController, taskViewModel) }
+
         composable("taskDetail/{taskId}") { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
             TaskDetail(modifier, navController, taskId, taskViewModel)
@@ -48,6 +50,13 @@ fun AppNavigation(modifier: Modifier = Modifier) {
         composable("editTask/{taskId}") { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
             EditTask(modifier, navController, taskId, taskViewModel)
+        }
+        composable("taskView/{taskId}") { backStackEntry ->
+            TaskView(
+                navController = navController,
+                taskId = backStackEntry.arguments?.getString("taskId"),
+                taskViewModel = taskViewModel
+            )
         }
     }
 }
